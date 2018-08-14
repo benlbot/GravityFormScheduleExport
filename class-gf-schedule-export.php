@@ -118,15 +118,69 @@ class GFScheduleExport extends GFAddOn {
 //			)
 //		);
 //	}
+	public function get_form_fields_as_checkbox_choices( $form, $args = array() ) {
+
+		$fields = array();
+
+		if ( ! is_array( $form['fields'] ) ) {
+			return $fields;
+		}
+
+		$args = wp_parse_args(
+			$args, array(
+				'field_types'    => array(),
+				'input_types'    => array(),
+				'callback'       => false
+			)
+		);
+
+		$entry_meta = GFFormsModel::get_entry_meta( $form['id'] );
+		$keys       = array_keys( $entry_meta );
+		foreach ( $keys as $key ) {
+			array_push( $form['fields'], array( 'id' => $key, 'label' => $entry_meta[ $key ]['label'] ) );
+		}
+
+
+		foreach ( $form['fields'] as $field ) {
+
+			$input_type               = GFFormsModel::get_input_type( $field );
+			$is_applicable_input_type = empty( $args['input_types'] ) || in_array( $input_type, $args['input_types'] );
+
+
+			if ( is_callable( $args['callback'] ) ) {
+				$is_applicable_input_type = call_user_func( $args['callback'], $is_applicable_input_type, $field, $form );
+			}
+
+			if ( ! $is_applicable_input_type ) {
+				continue;
+			}
+
+			if ( ! empty( $args['property'] ) && ( ! isset( $field->$args['property'] ) || $field->$args['property'] != $args['property_value'] ) ) {
+				continue;
+			}
+
+			$inputs = $field->get_entry_inputs();
+
+			if ( ! $field->displayOnly ) {
+				$fields[] = array(
+					'label' => esc_html__( GFCommon::get_label( $field ), 'autoexport_csv_addon'),
+					'name' => $field['id'],
+
+				);
+			}
+		}
+		return $fields;
+	}
 	/**
 	 * Configures the settings which should be rendered on the Form Settings > Simple Add-On tab.
 	 *
 	 * @return array
 	 */
 	public function form_settings_fields( $form ) {
+		$field_choices = self::get_form_fields_as_checkbox_choices($form);
 		return array(
 			array(
-				'title'  => esc_html__( 'Schedule Export Settings', 'gf_schedule_export' ),
+				'title'  => esc_html__( 'Export Settings', 'gf_schedule_export' ),
 				'fields' => array(
 					array(
 						'label'   => esc_html__( 'Activate Schedule export', 'gf_schedule_export' ),
@@ -140,6 +194,34 @@ class GFScheduleExport extends GFAddOn {
 							),
 						),
 					),
+				),
+			),
+			array(
+				'title'  => esc_html__( 'Export Fields', 'gf_schedule_export' ),
+				'fields' => array(
+					array(
+						'label'   => esc_html__( 'Fields to Include in Report', 'gf_schedule_export' ),
+						'type'    => 'checkbox',
+						'name'    => 'select_all',
+						'tooltip' => esc_html__( 'Select the form fields that you want to include in your export.', 'gf_schedule_export' ),
+						'choices' => array(
+							array(
+								'label'         => esc_html__( 'Select All', 'gf_schedule_export' ),
+								'name'          => 'select_all',
+								'default_value' => 0,
+							),
+						)
+					),
+					array(
+						'type'    => 'checkbox',
+						'name'    => 'field_choices',
+						'choices' => $field_choices,
+					),
+				)
+			),
+			array(
+				'title'  => esc_html__( 'Schedule Export', 'gf_schedule_export' ),
+				'fields' => array(
 					array(
 						'label'   => esc_html__( 'Export Period', 'gf_schedule_export' ),
 						'type'    => 'select',

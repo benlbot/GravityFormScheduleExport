@@ -36,4 +36,11 @@ jQuery(function($){
             $('#gaddon-setting-row-'+this.name).hide();
         }
     });
+    $('input#select_all').click(function() {
+        let self = this;
+        $('tr#gaddon-setting-row-field_choices input').each(function() {
+            this.checked = self.checked;
+            $(this).siblings("input[type=hidden]").val(self.checked ? 1 : 0);
+        });
+    });
 });
